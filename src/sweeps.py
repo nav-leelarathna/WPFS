@@ -121,7 +121,7 @@ def classifier(latent_sweep_id=None, classifier_sweep_id=None):
         sweep_id = wandb.sweep(sweep=sweep_config, project=project)
     else:
         sweep_id = f"nav-leelarathna/{project}/{classifier_sweep_id}"
-    classifier_config = utils.parse("configs/separateLatentAndClassifier/classifier_config.json")
+    classifier_config = utils.parse("configs/classifier_config.json")
     wandb.agent(sweep_id, function=lambda : _classifier(project, classifier_config))
 
 def _classifier(project, classifier_config):

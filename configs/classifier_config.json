@@ -1,0 +1,60 @@
+{
+    "project_name" : "classifier" , // experiments name
+    "run_prefix" : "dnn",
+    "wandb" : true,
+    "test" : false,
+    "debug" : false,
+    "seed": 42,
+    "model" : {
+        "name" : ["models.classifier", "Classifier"],
+        "args" : {
+            // "latent_dim" : 64,
+            "dense_layers" : [64,64],
+            "loss_function" : {
+                "name" : ["torch.nn", "CrossEntropyLoss"]
+            },
+            "class_weights" : null// gets filled in later
+        }  
+    },
+    "train" : {
+        "optimizer" : ["torch.optim.adam", "Adam"],
+        "learning_rate" : 0.001,
+        "epochs": 1000,
+        "save_checkpoint_epoch": 1,
+        "patience" : 100
+    },
+    "data_module" : {
+        "name" : "lung",//"metabric-pam50",
+        "batch_size" : 16,
+        "cv_folds" : 5,
+        "seed_kfold" : 42,
+        "split_id" : 0,
+        "valid_percentage" : 0.1,
+        "seed_validation" : 42,
+        "class_weight_type" : "balanced",  // "balanced" or "standard"
+        "modality_widths" : null, // gets filled in later
+        "class_weights" : null,  //  gets filled in later
+        "dataset": {
+            "name" : ["data_module", "CustomDataset"],
+            "args":{
+                "splits" : [1]  // these are the ratios of the size of slices of input tensor to eaach encoder-decoder network. Make sure this is equal to the number of networks
+            }
+        },
+        "latent" : {
+            "enabled" : false, // WARNING: this should usually be set to false unless you want to train a classifier on a latent dataset
+            "args": {
+                "project" : "mvae",
+                // "run_name" : "run_2023_01_24_19_39_21",
+                "run_id" : "foo",
+                "model_name" : "model-38hlthf7:v24"
+            }       
+        },
+        "embedding":{
+            "enabled" : false,
+            "name"  : ["sklearn.decomposition", "PCA"],
+            "args":{
+                "n_components" : 64
+            }
+        }
+    }
+}
