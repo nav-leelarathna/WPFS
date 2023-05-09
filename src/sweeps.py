@@ -31,6 +31,29 @@ datasets_percentages = [
     ["metabric-pam50",0.05],
 ]
 
+def dietnetworks(sweep_id=None, name='dietnetworks'):
+    project="baselines"
+    base_configuration = utils.parse("configs/config.json")
+    if sweep_id is None:
+        sweep_configuration = {
+            'method': 'grid',
+            'name': name,
+            'metric': {
+                'goal': 'minimize', 
+                'name': 'val_loss'
+                },
+            'parameters': {
+                "dataset_percentages" : {"values" :[ datasets_percentages[0]]},
+                "seed_kfold" : {"values": [0]},
+                "split_id" : {"values": [0]},
+            }
+        }
+        sweep_id = wandb.sweep(sweep=sweep_configuration, project=project)
+    else:
+        sweep_id = f"nav-leelarathna/{project}/{sweep_id}"
+    wandb.agent(sweep_id, function=lambda : _model(project, base_configuration, name="dietnetworks"))
+    print(f"Starting sweep for vae scale experiment, id: {sweep_id}")
+
 def fsnet(sweep_id=None, name='fsnet'):
     project="baselines"
     base_configuration = utils.parse("configs/config.json")
