@@ -401,8 +401,8 @@ class GeneralNeuralNetwork(pl.LightningModule):
 			# 'y_pred': torch.argmax(y_hat, dim=1)
 		}
 
-	def training_epoch_end(self, outputs):
-		self.log_epoch_metrics(outputs, 'train')
+	# def on_train_epoch_end(self, outputs):
+	# 	self.log_epoch_metrics(outputs, 'train')
 
 	def validation_step(self, batch, batch_idx, dataloader_idx=0):
 		"""
@@ -413,23 +413,26 @@ class GeneralNeuralNetwork(pl.LightningModule):
 		y_hat, x_hat, sparsity_weights = self.forward(x)
 
 		losses = self.compute_loss(y_true, y_hat, x, x_hat, sparsity_weights)
-	
+		self.log_losses(losses, key='valid')
 		return {
 			'losses': detach_tensors(losses),
 			'y_true': y_true,
 			# 'y_pred': torch.argmax(y_hat, dim=1)
 		}
+	
+	# def on_validation_epoch_end(self) -> None:
+	# 	return super().on_validation_epoch_end()
 
-	def validation_epoch_end(self, outputs):
-		losses = {
-			'total': np.mean([output['losses']['total'].item() for output in outputs]),
-			# 'cross_entropy': np.mean([output['losses']['cross_entropy'].item() for output in outputs]),
-			'sparsity': np.mean([output['losses']['sparsity'].item() for output in outputs]),
-			'reconstruction': np.mean([output['losses']['reconstruction'].item() for output in outputs])
-		}
+	# def on_validation_epoch_end(self, outputs):
+	# 	losses = {
+	# 		'total': np.mean([output['losses']['total'].item() for output in outputs]),
+	# 		# 'cross_entropy': np.mean([output['losses']['cross_entropy'].item() for output in outputs]),
+	# 		'sparsity': np.mean([output['losses']['sparsity'].item() for output in outputs]),
+	# 		'reconstruction': np.mean([output['losses']['reconstruction'].item() for output in outputs])
+	# 	}
 
-		self.log_losses(losses, key='valid')
-		self.log_epoch_metrics(outputs, key='valid')
+	# 	self.log_losses(losses, key='valid')
+	# 	self.log_epoch_metrics(outputs, key='valid')
 
 
 	def test_step(self, batch, batch_idx, dataloader_idx=0):
@@ -437,6 +440,7 @@ class GeneralNeuralNetwork(pl.LightningModule):
 		
 		y_hat, x_hat, sparsity_weights = self.forward(x)
 		losses = self.compute_loss(y_true, y_hat, x, x_hat, sparsity_weights)
+		self.log_losses(losses, key='test')
 		return {
 			'losses': detach_tensors(losses),
 			'y_true': y_true,
@@ -444,16 +448,16 @@ class GeneralNeuralNetwork(pl.LightningModule):
 			# 'y_hat': y_hat.detach().cpu().numpy(),
 		}
 
-	def test_epoch_end(self, outputs):
-		### Save losses
-		losses = {
-			'total': np.mean([output['losses']['total'].item() for output in outputs]),
-			# 'cross_entropy': np.mean([output['losses']['cross_entropy'].item() for output in outputs]),
-			'sparsity': np.mean([output['losses']['sparsity'].item() for output in outputs]),
-			'reconstruction': np.mean([output['losses']['reconstruction'].item() for output in outputs])
-		}
-		self.log_losses(losses, key=self.log_test_key)
-		self.log_epoch_metrics(outputs, self.log_test_key)
+	# def test_epoch_end(self, outputs):
+	# 	### Save losses
+	# 	losses = {
+	# 		'total': np.mean([output['losses']['total'].item() for output in outputs]),
+	# 		# 'cross_entropy': np.mean([output['losses']['cross_entropy'].item() for output in outputs]),
+	# 		'sparsity': np.mean([output['losses']['sparsity'].item() for output in outputs]),
+	# 		'reconstruction': np.mean([output['losses']['reconstruction'].item() for output in outputs])
+	# 	}
+	# 	self.log_losses(losses, key=self.log_test_key)
+	# 	self.log_epoch_metrics(outputs, self.log_test_key)
 
 
 	def configure_optimizers(self):
