@@ -332,8 +332,8 @@ class CustomDataModule(pl.LightningDataModule):
 			X_for_embeddings = MinMaxScaler().fit_transform(self.X_train_raw)
 		else:
 			raise Exception("embedding_preprocessing not supported")
-		X_for_embeddings = MinMaxScaler().fit_transform(self.X_train)
-		X_for_embeddings = self.X_train
+		# X_for_embeddings = MinMaxScaler().fit_transform(self.X_train)
+		# X_for_embeddings = self.X_train
 
 		if embedding_type == 'histogram':
 			"""
