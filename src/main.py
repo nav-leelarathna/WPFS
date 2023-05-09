@@ -13,17 +13,18 @@ from pytorch_tabnet.tab_model import TabNetClassifier
 from pytorch_tabnet.metrics import Metric
 from lassonet import LassoNetClassifier
 from functools import partial
-
+import torch
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 import os
 import warnings
 import sklearn
 import logging
 import argparse
 import numpy as np
-
-from dataset import *
+import data_module as dm
+# from dataset import *
 from models import *
-
+import utils
 
 def get_run_name(args):
 	run_name = f"{args.model}"
@@ -34,7 +35,10 @@ def train(args):
 	#### Load dataset
 	print(f"\nInside training function")
 	print(f"\nLoading data {args.dataset}...")
-	data_module = create_data_module(args)
+	# data_module = create_data_module(args)
+	configuration = utils.parse("configs/config.json")
+	configuration.data_module.name = args.dataset
+	data_module = dm.create_datamodule(configuration, args)
 	
 	print(f"Train/Valid/Test splits of sizes {args.train_size}, {args.valid_size}, {args.test_size}")
 	print(f"Num of features: {args.num_features}")
@@ -98,9 +102,9 @@ def train(args):
 
 				def __call__(self, y_true, y_score):
 					aux = F.cross_entropy(
-						input=torch.tensor(y_score, device='cuda'),
-						target=torch.tensor(y_true, device='cuda'),
-						weight=torch.tensor(args.class_weights, device='cuda')
+						input=torch.tensor(y_score, device=device),
+						target=torch.tensor(y_true, device=device),
+						weight=torch.tensor(args.class_weights, device=device)
 					).detach().cpu().numpy()
 
 					return float(aux)
@@ -113,7 +117,7 @@ def train(args):
 			model.fit(data_module.X_train, data_module.y_train,
 		  			  eval_set=[(data_module.X_valid, data_module.y_valid)],
 					  eval_metric=[WeightedCrossEntropy], 
-					  loss_fn=torch.nn.CrossEntropyLoss(torch.tensor(args.class_weights, device='cuda')),
+					  loss_fn=torch.nn.CrossEntropyLoss(torch.tensor(args.class_weights, device=device)),
 					  batch_size=batch_size,
 					  virtual_batch_size=virtual_batch_size,
 					  max_epochs=5000, patience=100)
@@ -243,9 +247,9 @@ def parse_arguments(args=None):
 
 	###############		 Dataset		###############
 
-	parser.add_argument('--dataset', type=str, required=True,
+	parser.add_argument('--dataset', type=str, 
 		choices=['metabric-pam50', 'metabric-dr', 'tcga-2ysurvival', 'tcga-tumor-grade',
-				 'lung', 'prostate', 'toxicity', 'cll', 'smk'])
+				 'lung', 'prostate', 'toxicity', 'cll', 'smk'], default="lung")
 
 
 	###############		 Model			###############
@@ -313,10 +317,10 @@ def parse_arguments(args=None):
 
 
 	parser.add_argument('--max_steps', type=int, default=10000, help='Specify the max number of steps to train.')
-	parser.add_argument('--lr', type=float, default=3e-3, help='Learning rate')
+	parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
 	parser.add_argument('--batch_size', type=int, default=8)
 
-	parser.add_argument('--gamma', type=float, default=0, 
+	parser.add_argument('--gamma', type=float, default=1, 
 						help='The factor multiplied to the reconstruction error (DietNetworks and FsNet) \
 							  If >0, then create a decoder with a reconstruction loss. \
 							  If ==0, then dont create a decoder.')
@@ -362,7 +366,7 @@ def parse_arguments(args=None):
 						help="If `standard`, all classes use a weight of 1.\
 							  If `balanced`, classes are weighted inverse proportionally to their size (see https://scikit-learn.org/stable/modules/generated/sklearn.utils.class_weight.compute_class_weight.html)")
 
-	parser.add_argument('--lr_scheduler', type=str, choices=['cosine_warm_restart', 'lambda'], default='lambda')
+	parser.add_argument('--lr_scheduler', type=str, choices=['cosine_warm_restart', 'lambda'], default=None)
 	
 	parser.add_argument('--cosine_warm_restart_eta_min', type=float, default=1e-6)
 	parser.add_argument('--cosine_warm_restart_t_0', type=int, default=35)
@@ -394,8 +398,8 @@ def parse_arguments(args=None):
 
 
 if __name__ == "__main__":
-	warnings.filterwarnings("ignore", category=sklearn.exceptions.UndefinedMetricWarning)
-	warnings.filterwarnings("ignore", category=pytorch_lightning.utilities.warnings.LightningDeprecationWarning)
+	# warnings.filterwarnings("ignore", category=sklearn.exceptions.UndefinedMetricWarning)
+	# warnings.filterwarnings("ignore", category=pytorch_lightning.utilities.warnings.LightningDeprecationWarning)
 
 	print("Starting...")
 

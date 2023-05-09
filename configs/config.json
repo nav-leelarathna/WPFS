@@ -1,0 +1,109 @@
+{
+    "project_name" : "mvae_test" , // experiments name
+    "run_prefix" : "",
+    "wandb" : true,
+    "test" : false,
+    "seed": 42,
+    "debug" : false,
+    "model" : {
+        "name" : ["models.mvae","MVAE"],
+        "args" : {
+            "input_sizes" : null, // gets filled in later
+            "class_weights" : null, // gets filled in later
+            "expert_aggregation" : {
+                "name" : ["models.expert_aggregation", "MixtureOfProductsOfExperts"]
+            },
+            "networks" : [
+                {
+                    "encoder" : ["models.vae", "Encoder"],
+                    "decoder" : ["models.vae", "Decoder"],
+                    "args" : {
+                        "input_size" : 100,
+                        "dense_layers" : [512, 256],
+                        "latent_dim" : 64
+                    },
+                    "reconstruction_loss_function" : {
+                        "name" : ["torch.nn", "MSELoss"]
+                    }
+                },
+                {
+                    "encoder" : ["models.vae", "Encoder"],
+                    "decoder" : ["models.vae", "Decoder"],
+                    "args" : {
+                        "input_size" : 100,
+                        "dense_layers" : [512, 256],
+                        "latent_dim" : 64
+                    },
+                    "reconstruction_loss_function" : {
+                        "name" : ["torch.nn", "MSELoss"]
+                    }
+                },
+                {
+                    "encoder" : ["models.vae", "Encoder"],
+                    "decoder" : ["models.vae", "Decoder"],
+                    "args" : {
+                        "input_size" : 100,
+                        "dense_layers" : [512, 256],
+                        "latent_dim" : 64
+                    },
+                    "reconstruction_loss_function" : {
+                        "name" : ["torch.nn", "MSELoss"]
+                    }
+                }
+            ],
+            // "classifier" : {
+            //     "name" : ["models.classifier", "Classifier"],
+            //     "args" : {
+            //         // "latent_dim" : 64,
+            //         "dense_layers" : [128,128],
+            //         "loss_function" : {
+            //             "name" : ["torch.nn", "CrossEntropyLoss"]
+            //         },
+            //         "class_weights" : null// gets filled in later
+            //     }  
+            // },
+            "classifier":null,
+            "distance_loss_function":{
+                "name" : ["models.loss_functions", "KL"],
+                "beta": 0.01
+            },
+            "reconstruction_loss_function" : {
+                "name" : ["torch.nn", "MSELoss"]
+            }
+        }
+    },
+    "train" : {
+        "optimizer" : ["torch.optim.adam", "Adam"],
+        "learning_rate" : 0.001,
+        "epochs": 400,    
+        "save_checkpoint_epoch": 1,
+        "patience" : 20
+    },
+    "data_module" : {
+        "name" : "lung",//"metabric-pam50",
+        "shuffle_features" : true,
+        "batch_size" : 64,
+        "cv_folds" : 5,
+        "seed_kfold" : 42,
+        "split_id" : 0,
+        "valid_percentage" : 0.2,
+        "seed_validation" : 42,
+        "modality_widths" : null, // gets filled in later
+        "class_weight_type" : "balanced",  // "balanced" or "standard"
+        "class_weights" : null,  //  gets filled in later
+        "dataset": {
+            "name" : ["data_module", "CustomDataset"],
+            "args":{
+                "splits": [1]
+            }
+        },
+        "latent" : {
+            "enabled" : false, // WARNING: this should usually be set to false unless you want to train a classifier on a latent dataset
+            "args": {
+                "project" : "mvae_test",
+                "run_name" : "run_2023_01_23_22_33_14",
+                "model_name" : "model-9q5lb4mz:v0"
+            }       
+        }
+    }
+}

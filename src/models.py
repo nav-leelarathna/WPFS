@@ -9,6 +9,7 @@ from sklearn.metrics import balanced_accuracy_score
 from sparsity_network import SparsityNetwork
 from weight_predictor_network import WeightPredictorNetwork
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def get_labels_lists(outputs):
@@ -51,7 +52,8 @@ def reshape_batch(batch):
 	
 	This function reshapes the input from (batch_size, no_samples, D) to (batch_size * no_samples, D)
 	"""
-	x, y = batch
+	x, y = batch['x'],batch['y']
+	x = x[0]
 	x = x.reshape(-1, x.shape[-1])
 	y = y.reshape(-1)
 
@@ -94,8 +96,9 @@ def create_model(args, data_module=None):
 		return GeneralNeuralNetwork(args, first_layer, None)
 	elif args.model=='cae': # Supervised Autoencoder
 		concrete_layer = ConcreteLayer(args, args.num_features, args.feature_extractor_dims[0])
+		decoder = Decoder2(input_size=args.num_features, dense_layers=args.feature_extractor_dims[:2],latent_dim=64)
 
-		return GeneralNeuralNetwork(args, concrete_layer, None)
+		return GeneralNeuralNetwork(args, concrete_layer, decoder)
 	elif args.model=='fsnet':
 		concrete_layer = ConcreteLayer(args, args.num_features, args.feature_extractor_dims[0],
 				is_diet_layer=True, wpn_embedding_matrix=wpn_embedding_matrix)
@@ -257,7 +260,7 @@ class ConcreteLayer(nn.Module):
 			assert samples.shape == (self.output_dim, self.input_dim)
 		else: 			# sample using argmax
 			index_max_alphas = torch.argmax(alphas, dim=1) # size K
-			samples = torch.zeros(self.output_dim, self.input_dim).cuda()
+			samples = torch.zeros(self.output_dim, self.input_dim).to(device)
 			samples[torch.arange(self.output_dim), index_max_alphas] = 1.
 
 		return samples
@@ -284,6 +287,27 @@ class Decoder(nn.Module):
 
 		return F.linear(hidden_rep, W, self.bias)
 
+class Decoder2(nn.Module):
+	def __init__(self,
+				 input_size : int,
+				 dense_layers : list,
+				 latent_dim : int):
+		super().__init__()
+		self.input_size = input_size
+		layers = []
+		i = latent_dim
+		dense_layers = list(reversed(dense_layers))
+		for dim in dense_layers: # need to reverse the order
+			layers.append(nn.Linear(i, dim))
+			layers.append(nn.ReLU())
+			layers.append(nn.BatchNorm1d(dim))
+			i=dim
+		layers.append(nn.Dropout(0.2))
+		layers.append(nn.Linear(dense_layers[-1], input_size))
+		self.decoder = nn.Sequential(*layers)
+
+	def forward(self, x):
+		return self.decoder(x)
 
 class GeneralNeuralNetwork(pl.LightningModule):
 	def __init__(self, args, first_layer, decoder):
@@ -297,7 +321,7 @@ class GeneralNeuralNetwork(pl.LightningModule):
 		super().__init__()
 
 		self.args = args
-		self.log_test_key = None
+		self.log_test_key = "test"
 		self.learning_rate = args.lr
 
 		self.first_layer = first_layer
@@ -312,12 +336,15 @@ class GeneralNeuralNetwork(pl.LightningModule):
 		self.save_hyperparameters()
 
 	def forward(self, x):
+		# print(x.shape)
 		x, sparsity_weights = self.first_layer(x)			   # pass through first layer
+		# print(x.shape)
 
-		x = self.encoder_first_layers(x)					   # pass throught the first part of the following layers
-		x_hat = self.decoder(x) if self.decoder else None      # reconstruction
+		z= self.encoder_first_layers(x)					   # pass throught the first part of the following layers
+		# print(x.shape)
+		z2 = self.encoder_second_layers(z)
+		x_hat = self.decoder(z2) if self.decoder else None      # reconstruction
 
-		x = self.encoder_second_layers(x)
 		# y_hat = self.classification_layer(x)           		   # classification, returns logits
 		y_hat = None
 		
@@ -331,6 +358,7 @@ class GeneralNeuralNetwork(pl.LightningModule):
 	def compute_loss(self, y_true, y_hat, x, x_hat, sparsity_weights):
 		losses = {}
 		# losses['cross_entropy'] = F.cross_entropy(input=y_hat, target=y_true, weight=torch.tensor(self.args.class_weights, device=self.device))
+		# losses['cross_entropy'] = 0
 		losses['reconstruction'] = self.args.gamma * F.mse_loss(x_hat, x, reduction='mean') if self.decoder else torch.zeros(1, device=self.device)
 
 		### sparsity loss
@@ -339,7 +367,8 @@ class GeneralNeuralNetwork(pl.LightningModule):
 		else:
 			losses['sparsity'] = self.args.sparsity_regularizer_hyperparam * torch.sum(sparsity_weights)
 
-		losses['total'] = losses['cross_entropy'] + losses['reconstruction'] + losses['sparsity']
+		# losses['cross_entropy'] + 
+		losses['total'] = losses['reconstruction'] + losses['sparsity']
 		
 		return losses
 
@@ -350,14 +379,15 @@ class GeneralNeuralNetwork(pl.LightningModule):
 		self.log(f"{key}/sparsity_loss{dataloader_name}", losses['sparsity'].item())
 
 	def log_epoch_metrics(self, outputs, key, dataloader_name=""):
-		y_true, y_pred = get_labels_lists(outputs)
-		self.log(f'{key}/balanced_accuracy{dataloader_name}', balanced_accuracy_score(y_true, y_pred))
+		pass
+		# y_true, y_pred = get_labels_lists(outputs)
+		# self.log(f'{key}/balanced_accuracy{dataloader_name}', balanced_accuracy_score(y_true, y_pred))
 
 
 
 	def training_step(self, batch, batch_idx):
-		x, y_true = batch
-
+		x, y_true = batch['x'],batch['y']
+		x = x[0]
 		y_hat, x_hat, sparsity_weights = self.forward(x)
 
 		losses = self.compute_loss(y_true, y_hat, x, x_hat, sparsity_weights)
@@ -368,7 +398,7 @@ class GeneralNeuralNetwork(pl.LightningModule):
 			'loss': losses['total'],
 			'losses': detach_tensors(losses),
 			'y_true': y_true,
-			'y_pred': torch.argmax(y_hat, dim=1)
+			# 'y_pred': torch.argmax(y_hat, dim=1)
 		}
 
 	def training_epoch_end(self, outputs):
@@ -379,6 +409,7 @@ class GeneralNeuralNetwork(pl.LightningModule):
 		- dataloader_idx (int) tells which dataloader is the `batch` coming from
 		"""
 		x, y_true = reshape_batch(batch)
+
 		y_hat, x_hat, sparsity_weights = self.forward(x)
 
 		losses = self.compute_loss(y_true, y_hat, x, x_hat, sparsity_weights)
@@ -386,13 +417,13 @@ class GeneralNeuralNetwork(pl.LightningModule):
 		return {
 			'losses': detach_tensors(losses),
 			'y_true': y_true,
-			'y_pred': torch.argmax(y_hat, dim=1)
+			# 'y_pred': torch.argmax(y_hat, dim=1)
 		}
 
 	def validation_epoch_end(self, outputs):
 		losses = {
 			'total': np.mean([output['losses']['total'].item() for output in outputs]),
-			'cross_entropy': np.mean([output['losses']['cross_entropy'].item() for output in outputs]),
+			# 'cross_entropy': np.mean([output['losses']['cross_entropy'].item() for output in outputs]),
 			'sparsity': np.mean([output['losses']['sparsity'].item() for output in outputs]),
 			'reconstruction': np.mean([output['losses']['reconstruction'].item() for output in outputs])
 		}
@@ -403,21 +434,21 @@ class GeneralNeuralNetwork(pl.LightningModule):
 
 	def test_step(self, batch, batch_idx, dataloader_idx=0):
 		x, y_true = reshape_batch(batch)
+		
 		y_hat, x_hat, sparsity_weights = self.forward(x)
 		losses = self.compute_loss(y_true, y_hat, x, x_hat, sparsity_weights)
-
 		return {
 			'losses': detach_tensors(losses),
 			'y_true': y_true,
-			'y_pred': torch.argmax(y_hat, dim=1),
-			'y_hat': y_hat.detach().cpu().numpy(),
+			# 'y_pred': torch.argmax(y_hat, dim=1),
+			# 'y_hat': y_hat.detach().cpu().numpy(),
 		}
 
 	def test_epoch_end(self, outputs):
 		### Save losses
 		losses = {
 			'total': np.mean([output['losses']['total'].item() for output in outputs]),
-			'cross_entropy': np.mean([output['losses']['cross_entropy'].item() for output in outputs]),
+			# 'cross_entropy': np.mean([output['losses']['cross_entropy'].item() for output in outputs]),
 			'sparsity': np.mean([output['losses']['sparsity'].item() for output in outputs]),
 			'reconstruction': np.mean([output['losses']['reconstruction'].item() for output in outputs])
 		}

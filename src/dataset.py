@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def load_csv_data(path, labels_column=-1):
 	"""
@@ -212,8 +213,8 @@ def compute_nmf_embeddings(Xt, rank):
 	assert type(Xt)==torch.Tensor
 	assert Xt.shape[0] > Xt.shape[1]
 
-	nmf = NMF(Xt.shape, rank=rank).cuda()
-	nmf.fit(Xt.cuda(), beta=2, max_iter=1000, verbose=True) # beta=2 coresponds to the Frobenius norm, which is equivalent to an additive Gaussian noise model
+	nmf = NMF(Xt.shape, rank=rank).to(device)
+	nmf.fit(Xt.to(device), beta=2, max_iter=1000, verbose=True) # beta=2 coresponds to the Frobenius norm, which is equivalent to an additive Gaussian noise model
 
 	print(f"H has shape {nmf.H.shape}")
 	print(f"W.T has shape {nmf.W.T.shape}")
