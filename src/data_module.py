@@ -432,10 +432,10 @@ def create_datamodule_with_cross_validation(configuration, X, y, args):
 	print(f"Size of train : {X_train.shape}")
 	print(f"Size of valid: {X_valid.shape}")
 	print(f"Size of test : {X_test.shape}")
-	if args is not None;
-        args.train_size = X_train.shape[0]
-        args.valid_size = X_valid.shape[0]
-        args.test_size = X_test.shape[0]
+	if args is not None:
+		args.train_size = X_train.shape[0]
+		args.valid_size = X_valid.shape[0]
+		args.test_size = X_test.shape[0]
 
 	# assert X_train.shape[0] + X_valid.shape[0] + X_test.shape[0] == X.shape[0]
 	# assert set(y_train).union(set(y_valid)).union(set(y_test)) == set(y)
@@ -453,7 +453,7 @@ def create_datamodule(configuration, args):
 	else:
 		X, y = load(configuration.data_module.name) 
 	if args is not None:
-	    args.num_features = X.shape[1]
+		args.num_features = X.shape[1]
 	data_module, class_weights = create_datamodule_with_cross_validation(configuration, X, y, args)
 	data_module.prepare_data()
 	data_module.setup()
