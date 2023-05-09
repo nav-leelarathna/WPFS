@@ -272,7 +272,7 @@ def parse_arguments(args=None):
 	###############		 Sparsity network and sparsity regularization		###############
 	parser.add_argument('--sparsity_gene_embedding_type', type=str, default='nmf',
 						choices=['feature_values', 'nmf'], help='It`s applied over data preprocessed using `embedding_preprocessing`')
-	parser.add_argument('--sparsity_gene_embedding_size', type=int, default=50)
+	parser.add_argument('--sparsity_gene_embedding_size', type=int, default=20)
 	parser.add_argument('--sparsity_regularizer', action='store_true', dest='sparsity_regularizer')
 	parser.set_defaults(sparsity_regularizer=False)
 
@@ -286,7 +286,7 @@ def parse_arguments(args=None):
 						help='histogram = histogram x means (like FsNet)\
 							  feature_values = randomly pick patients and use their gene expressions as the embedding\
 							  It`s applied over data preprocessed using `embedding_preprocessing`')
-	parser.add_argument('--wpn_embedding_size', type=int, default=50, help='Size of the gene embedding')
+	parser.add_argument('--wpn_embedding_size', type=int, default=20, help='Size of the gene embedding')
 
 	parser.add_argument('--wpn_layers', type=int, nargs='+', default=[100, 100, 100, 128], help="The list of layer sizes for the weight predictor network.")
 							
