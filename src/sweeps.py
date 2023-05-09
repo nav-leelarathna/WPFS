@@ -157,7 +157,7 @@ def _train_classifier(configuration, project, run_name):
         num_devices = 1
     print("Using accelerator: " + device)
     print(f"Number of devices available: {num_devices}")
-    dataset = data_module.create_datamodule(configuration)
+    dataset = data_module.create_datamodule(configuration, args)
     
     model = utils.init_obj(configuration.model, init_type='Model')
     # model.setup_networks(input_sizes)
