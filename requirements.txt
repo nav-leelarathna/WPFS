@@ -102,7 +102,7 @@ networkx==2.5
 nltk==3.6.2
 notebook==6.4.3
 numexpr==2.7.1
-numpy==1.21.2
+# numpy==1.21.2
 oauthlib==3.1.1
 openpyxl==3.0.9
 opt-einsum==3.3.0
