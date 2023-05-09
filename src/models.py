@@ -65,7 +65,7 @@ def create_model(args, data_module=None):
 	Function to create the model. It firstly creates the components (e.g., FeatureExtractor)
 	and then assambles them
 	"""
-	pl.seed_everything(args.seed_model_init, workers=True)
+	# pl.seed_everything(args.seed_model_init, workers=True)
 
 	### create embedding matrices
 	wpn_embedding_matrix = data_module.get_embedding_matrix(args.wpn_embedding_type, args.wpn_embedding_size)

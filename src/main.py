@@ -198,7 +198,7 @@ def train(args, wandb_logger, data_module):
 
 		# wandb_logger = WandbLogger(project="wpfs", name="test",log_model=True, save_dir="runs")
 
-		pl.seed_everything(args.seed_training, workers=True)
+		# pl.seed_everything(args.seed_training, workers=True)
 		trainer = pl.Trainer(
 			# Training
 			max_steps=args.max_steps,

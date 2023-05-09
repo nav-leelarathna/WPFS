@@ -324,15 +324,15 @@ class CustomDataModule(pl.LightningDataModule):
 				raise Exception()
 
 		# Preprocess the data for the embeddings
-		# if self.args.embedding_preprocessing == 'raw':
-		# 	X_for_embeddings = self.X_train_raw
-		# elif self.args.embedding_preprocessing == 'z_score':
-		# 	X_for_embeddings = StandardScaler().fit_transform(self.X_train_raw)
-		# elif self.args.embedding_preprocessing == 'minmax':
-		# 	X_for_embeddings = MinMaxScaler().fit_transform(self.X_train_raw)
-		# else:
-		# 	raise Exception("embedding_preprocessing not supported")
-		# X_for_embeddings = MinMaxScaler().fit_transform(self.X_train)
+		if self.args.embedding_preprocessing == 'raw':
+			X_for_embeddings = self.X_train_raw
+		elif self.args.embedding_preprocessing == 'z_score':
+			X_for_embeddings = StandardScaler().fit_transform(self.X_train_raw)
+		elif self.args.embedding_preprocessing == 'minmax':
+			X_for_embeddings = MinMaxScaler().fit_transform(self.X_train_raw)
+		else:
+			raise Exception("embedding_preprocessing not supported")
+		X_for_embeddings = MinMaxScaler().fit_transform(self.X_train)
 		X_for_embeddings = self.X_train
 
 		if embedding_type == 'histogram':
