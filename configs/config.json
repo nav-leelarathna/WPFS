@@ -25,30 +25,6 @@
                     "reconstruction_loss_function" : {
                         "name" : ["torch.nn", "MSELoss"]
                     }
-                },
-                {
-                    "encoder" : ["models.vae", "Encoder"],
-                    "decoder" : ["models.vae", "Decoder"],
-                    "args" : {
-                        "input_size" : 100,
-                        "dense_layers" : [512, 256],
-                        "latent_dim" : 64
-                    },
-                    "reconstruction_loss_function" : {
-                        "name" : ["torch.nn", "MSELoss"]
-                    }
-                },
-                {
-                    "encoder" : ["models.vae", "Encoder"],
-                    "decoder" : ["models.vae", "Decoder"],
-                    "args" : {
-                        "input_size" : 100,
-                        "dense_layers" : [512, 256],
-                        "latent_dim" : 64
-                    },
-                    "reconstruction_loss_function" : {
-                        "name" : ["torch.nn", "MSELoss"]
-                    }
                 }
             ],
             // "classifier" : {

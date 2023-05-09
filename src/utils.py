@@ -16,6 +16,7 @@ import numpy as np
 import math
 import torch.nn.functional as F
 from torch.autograd import Variable
+from models import GeneralNeuralNetwork
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -86,8 +87,8 @@ def load_model_from_wandb(project, run_id, model_name):
     artifact = api.artifact(model_name)
     artifact_dir = artifact.download()
     model_path = os.path.join(artifact_dir, "model.ckpt")
-    model_class = parse_class(configuration.model.name)
-    model = model_class.load_from_checkpoint(model_path)
+    # model_class = parse_class(configuration.model.name)
+    model = GeneralNeuralNetwork.load_from_checkpoint(model_path)
     return model
 
 def getRunConfig(project,run_id):
