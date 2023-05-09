@@ -33,7 +33,7 @@ datasets_percentages = [
 
 def fsnet(sweep_id=None, name='fsnet'):
     project="baselines"
-    base_configuration = utils.parse("configs/fsmvae_config.json")
+    base_configuration = utils.parse("configs/config.json")
     if sweep_id is None:
         sweep_configuration = {
             'method': 'grid',
@@ -43,9 +43,9 @@ def fsnet(sweep_id=None, name='fsnet'):
                 'name': 'val_loss'
                 },
             'parameters': {
-                "dataset_percentages" : {"values" : datasets_percentages},
+                "dataset_percentages" : {"values" :[ datasets_percentages[0]]},
                 "seed_kfold" : {"values": [0]},
-                "split_id" : {"values": [0,1,2,3,4]},
+                "split_id" : {"values": [0]},
             }
         }
         sweep_id = wandb.sweep(sweep=sweep_configuration, project=project)
@@ -60,19 +60,21 @@ def _fsnet(project, config):
     seed_kfold = wandb_logger.experiment.config.seed_kfold
     dataset_percentage = wandb_logger.experiment.config.dataset_percentages[1]
     datasetName = wandb_logger.experiment.config.dataset_percentages[0]
-    run_name = f"fsnet{datasetName}_{dataset_percentage}"
+    run_name = f"fsnet_{datasetName}_{dataset_percentage}"
     wandb_logger.experiment.name = run_name
-    base_configuration = copy.deepcopy(base_configuration)
+    base_configuration = copy.deepcopy(config)
     base_configuration.data_module.seed_kfold = seed_kfold
     base_configuration.data_module.split_id = split_id
     base_configuration.data_module.dataset_percentage = dataset_percentage
     base_configuration.data_module.name= datasetName
     dict_config = utils.namespace_to_dict(base_configuration)
     wandb_logger.experiment.config.update(dict_config)
-    utils.write_config(base_configuration, project, run_name)
-    args = parse_arguments(args)
+    # utils.write_config(base_configuration, project, run_name)
+    args = parse_arguments()
     args.dataset = datasetName
-    args.model = "fsnet"
+    args.model = 'fsnet'
+    dm = data_module.create_datamodule(base_configuration, args)
+    train(args, wandb_logger, dm)
     # model = utils.init_obj(base_configuration.model, init_type='Model')
     # model.configure_optimizers(utils.parse_class(base_configuration.train.optimizer), base_configuration.train.learning_rate)
     # wandb_logger.watch(model)
@@ -80,10 +82,10 @@ def _fsnet(project, config):
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
-        globals()[sys.argv[1]]()
+        globals()[sys.argv[1].split("=")[-1]]()
     elif len(sys.argv) == 3:
-        globals()[sys.argv[1]](str(sys.argv[2]))
+        globals()[sys.argv[1].split("=")[-1]](str(sys.argv[2].split("=")[-1]))
     elif len(sys.argv) == 4:
-        globals()[sys.argv[1]](str(sys.argv[2]),str(sys.argv[3]))
+        globals()[sys.argv[1].split("=")[-1]](str(sys.argv[2].split("=")[-1]),str(sys.argv[3].split("=")[-1]))
     else:   
         print("unrecognised number of arguments")

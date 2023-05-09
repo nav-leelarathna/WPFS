@@ -21,7 +21,7 @@ import sklearn
 import logging
 import argparse
 import numpy as np
-import data_module as dm
+# import data_module as dm
 # from dataset import *
 from models import *
 import utils
@@ -31,14 +31,14 @@ def get_run_name(args):
 	return run_name
 
 
-def train(args):
+def train(args, wandb_logger, data_module):
 	#### Load dataset
 	print(f"\nInside training function")
 	print(f"\nLoading data {args.dataset}...")
 	# data_module = create_data_module(args)
-	configuration = utils.parse("configs/config.json")
-	configuration.data_module.name = args.dataset
-	data_module = dm.create_datamodule(configuration, args)
+	# configuration = utils.parse("configs/config.json")
+	# configuration.data_module.name = args.dataset
+	# data_module = dm.create_datamodule(configuration, args)
 	
 	print(f"Train/Valid/Test splits of sizes {args.train_size}, {args.valid_size}, {args.test_size}")
 	print(f"Num of features: {args.num_features}")
@@ -177,7 +177,7 @@ def train(args):
 		#### Create model
 		model = create_model(args, data_module)
 
-
+		wandb_logger.watch(model)
 		##### Train
 		checkpoint_callback = ModelCheckpoint(		# save best model for evaluation
 			monitor=f'valid/reconstruction_loss',
@@ -196,7 +196,7 @@ def train(args):
 			))
 		callbacks.append(LearningRateMonitor(logging_interval='step'))
 
-		wandb_logger = WandbLogger(project="wpfs", name="test",log_model=True, save_dir="runs")
+		# wandb_logger = WandbLogger(project="wpfs", name="test",log_model=True, save_dir="runs")
 
 		pl.seed_everything(args.seed_training, workers=True)
 		trainer = pl.Trainer(
@@ -207,7 +207,7 @@ def train(args):
 			# logging
 			logger=wandb_logger,
 			log_every_n_steps = 1,
-			val_check_interval = args.val_check_interval,
+			val_check_interval = None,
 			callbacks = callbacks,
 
 			# miscellaneous
@@ -250,6 +250,9 @@ def parse_arguments(args=None):
 	parser.add_argument('--dataset', type=str, 
 		choices=['metabric-pam50', 'metabric-dr', 'tcga-2ysurvival', 'tcga-tumor-grade',
 				 'lung', 'prostate', 'toxicity', 'cll', 'smk'], default="lung")
+	
+	parser.add_argument('--function', type=str, default="fsnet")
+	parser.add_argument('--sweep_id', type=str, default="0")
 
 
 	###############		 Model			###############
@@ -316,7 +319,8 @@ def parse_arguments(args=None):
 	parser.set_defaults(use_best_hyperparams=False)
 
 
-	parser.add_argument('--max_steps', type=int, default=10000, help='Specify the max number of steps to train.')
+	# parser.add_argument('--max_steps', type=int, default=10000, help='Specify the max number of steps to train.')
+	parser.add_argument('--max_steps', type=int, default=100, help='Specify the max number of steps to train.')
 	parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
 	parser.add_argument('--batch_size', type=int, default=8)
 
@@ -346,7 +350,7 @@ def parse_arguments(args=None):
 	parser.add_argument('--patience_early_stopping', type=int, default=200,
 						help='Set number of checks (set by *val_check_interval*) to do early stopping.\
 							 It will train for at least   args.val_check_interval * args.patience_early_stopping epochs')
-	parser.add_argument('--val_check_interval', type=int, default=5, 
+	parser.add_argument('--val_check_interval', type=int, default=1, 
 						help='number of steps at which to check the validation')
 
 
