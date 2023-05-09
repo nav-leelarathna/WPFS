@@ -51,16 +51,16 @@ def fsnet(sweep_id=None, name='fsnet'):
         sweep_id = wandb.sweep(sweep=sweep_configuration, project=project)
     else:
         sweep_id = f"nav-leelarathna/{project}/{sweep_id}"
-    wandb.agent(sweep_id, function=lambda : _fsnet(project, base_configuration))
+    wandb.agent(sweep_id, function=lambda : _model(project, base_configuration, name="fsnet"))
     print(f"Starting sweep for vae scale experiment, id: {sweep_id}")
 
-def _fsnet(project, config):
+def _model(project, config, name):
     wandb_logger = WandbLogger(project=project,log_model=True, save_dir="runs")
     split_id = wandb_logger.experiment.config.split_id
     seed_kfold = wandb_logger.experiment.config.seed_kfold
     dataset_percentage = wandb_logger.experiment.config.dataset_percentages[1]
     datasetName = wandb_logger.experiment.config.dataset_percentages[0]
-    run_name = f"fsnet_{datasetName}_{dataset_percentage}"
+    run_name = f"{name}_{datasetName}_{dataset_percentage}"
     wandb_logger.experiment.name = run_name
     base_configuration = copy.deepcopy(config)
     base_configuration.data_module.seed_kfold = seed_kfold
@@ -72,7 +72,7 @@ def _fsnet(project, config):
     # utils.write_config(base_configuration, project, run_name)
     args = parse_arguments()
     args.dataset = datasetName
-    args.model = 'fsnet'
+    args.model = name
     dm = data_module.create_datamodule(base_configuration, args)
     train(args, wandb_logger, dm)
     # model = utils.init_obj(base_configuration.model, init_type='Model')

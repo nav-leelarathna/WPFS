@@ -7,7 +7,7 @@ from pytorch_lightning.callbacks import RichProgressBar, LearningRateMonitor
 from pytorch_lightning.loggers import CSVLogger
 from pytorch_lightning.loggers import WandbLogger
 
-import lightgbm as lgb
+# import lightgbm as lgb
 from sklearn.ensemble import RandomForestClassifier
 from pytorch_tabnet.tab_model import TabNetClassifier
 from pytorch_tabnet.metrics import Metric
@@ -249,7 +249,7 @@ def parse_arguments(args=None):
 
 	parser.add_argument('--dataset', type=str, 
 		choices=['metabric-pam50', 'metabric-dr', 'tcga-2ysurvival', 'tcga-tumor-grade',
-				 'lung', 'prostate', 'toxicity', 'cll', 'smk'], default="lung")
+				 'lung', 'prostate', 'toxicity', 'cll', 'smk'], default="prostate")
 	
 	parser.add_argument('--function', type=str, default="fsnet")
 	parser.add_argument('--sweep_id', type=str, default="0")
