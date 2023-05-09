@@ -351,7 +351,7 @@ class GeneralNeuralNetwork(pl.LightningModule):
 		return y_hat, x_hat, sparsity_weights
 	
 	def get_latent(self, x):
-		x, sparsity_weights = self.first_layer(x)			   # pass through first layer
+		x, sparsity_weights = self.first_layer(x[0])			   # pass through first layer
 		x = self.encoder_first_layers(x)	
 		return x	
 
@@ -408,8 +408,9 @@ class GeneralNeuralNetwork(pl.LightningModule):
 		"""
 		- dataloader_idx (int) tells which dataloader is the `batch` coming from
 		"""
-		x, y_true = reshape_batch(batch)
-
+		# x, y_true = reshape_batch(batch)
+		x, y_true = batch['x'],batch['y']
+		x = x[0]
 		y_hat, x_hat, sparsity_weights = self.forward(x)
 
 		losses = self.compute_loss(y_true, y_hat, x, x_hat, sparsity_weights)
@@ -436,8 +437,9 @@ class GeneralNeuralNetwork(pl.LightningModule):
 
 
 	def test_step(self, batch, batch_idx, dataloader_idx=0):
-		x, y_true = reshape_batch(batch)
-		
+		# x, y_true = reshape_batch(batch)
+		x, y_true = batch['x'],batch['y']
+		x = x[0]
 		y_hat, x_hat, sparsity_weights = self.forward(x)
 		losses = self.compute_loss(y_true, y_hat, x, x_hat, sparsity_weights)
 		self.log_losses(losses, key='test')

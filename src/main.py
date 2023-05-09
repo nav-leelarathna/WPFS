@@ -253,6 +253,7 @@ def parse_arguments(args=None):
 	
 	parser.add_argument('--function', type=str, default="fsnet")
 	parser.add_argument('--sweep_id', type=str, default="0")
+	parser.add_argument('--latent_sweep_id', type=str, default="0")
 
 
 	###############		 Model			###############
