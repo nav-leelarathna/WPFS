@@ -255,7 +255,9 @@ class CustomDataModule(pl.LightningDataModule):
 		super().__init__()
 		self.configuration = configuration
 		self.batch_size = configuration.data_module.batch_size
-
+		self.X_train_raw = X_train
+		self.X_valid_raw = X_valid
+		self.X_test_raw = X_test
 		# Standardize data
 		self.X_train = X_train.astype(np.float32)
 		self.X_valid = X_valid.astype(np.float32)
