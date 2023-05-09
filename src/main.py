@@ -321,7 +321,7 @@ def parse_arguments(args=None):
 
 
 	# parser.add_argument('--max_steps', type=int, default=10000, help='Specify the max number of steps to train.')
-	parser.add_argument('--max_steps', type=int, default=100, help='Specify the max number of steps to train.')
+	parser.add_argument('--max_steps', type=int, default=10000, help='Specify the max number of steps to train.')
 	parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
 	parser.add_argument('--batch_size', type=int, default=8)
 

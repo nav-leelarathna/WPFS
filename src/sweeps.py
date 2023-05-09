@@ -52,7 +52,6 @@ def dietnetworks(sweep_id=None, name='dietnetworks'):
     else:
         sweep_id = f"nav-leelarathna/{project}/{sweep_id}"
     wandb.agent(sweep_id, function=lambda : _model(project, base_configuration, name="dietnetworks"))
-    print(f"Starting sweep for vae scale experiment, id: {sweep_id}")
 
 def fsnet(sweep_id=None, name='fsnet'):
     project="baselines"
@@ -75,7 +74,6 @@ def fsnet(sweep_id=None, name='fsnet'):
     else:
         sweep_id = f"nav-leelarathna/{project}/{sweep_id}"
     wandb.agent(sweep_id, function=lambda : _model(project, base_configuration, name="fsnet"))
-    print(f"Starting sweep for vae scale experiment, id: {sweep_id}")
 
 def _model(project, config, name):
     wandb_logger = WandbLogger(project=project,log_model=True, save_dir="runs")
