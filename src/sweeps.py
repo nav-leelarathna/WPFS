@@ -148,7 +148,46 @@ def _classifier(project, classifier_config):
     classifier_config.data_module.seed_validation = seed_validation
     run_name = "classifier_"+sr[1]
     wandb_logger.experiment.name = run_name
-    train(classifier_config, "classifier", run_name)
+    _train_classifier(classifier_config, "classifier", run_name)
+
+def _train_classifier(configuration, project, run_name):
+    device = "gpu" if torch.cuda.is_available() else "cpu"
+    num_devices = torch.cuda.device_count()
+    if device == "cpu":
+        num_devices = 1
+    print("Using accelerator: " + device)
+    print(f"Number of devices available: {num_devices}")
+    dataset = data_module.create_datamodule(configuration)
+    
+    model = utils.init_obj(configuration.model, init_type='Model')
+    # model.setup_networks(input_sizes)
+    print("Optimizer's state_dict:")
+    opt = model.configure_optimizers(utils.parse_class(configuration.train.optimizer), configuration.train.learning_rate)
+    # for var_name in opt.state_dict(): 
+    #     print(var_name, "\t", opt.state_dict()[var_name])
+
+    early_stopping_callback = EarlyStopping(monitor="val_loss", mode="min", patience=configuration.train.patience)
+    checkpoint_callback = ModelCheckpoint(monitor="val_loss", mode="min")
+    # print("writing configuration to memory")
+    # utils.write_config(configuration, project, run_name)
+    
+    if configuration.wandb:
+        wandb_logger = WandbLogger(project=project, name=run_name,log_model=True, save_dir="runs")
+        dict_config = utils.namespace_to_dict(configuration)
+        wandb_logger.experiment.config.update(dict_config)
+        wandb_logger.watch(model)
+        trainer = pl.Trainer(logger=wandb_logger, max_epochs = configuration.train.epochs, callbacks=[checkpoint_callback, early_stopping_callback],log_every_n_steps=3, accelerator=device, devices=num_devices, min_epochs=150)
+    else:
+        trainer = pl.Trainer(max_epochs = configuration.train.epochs, callbacks=[checkpoint_callback, early_stopping_callback],log_every_n_steps=3, accelerator=device, devices=num_devices, min_epochs=30)
+    #, early_stop_callback=early_stop_callback)
+
+    test = configuration.test
+    if test:
+        trainer.test(ckpt_path="best")
+    else:
+        trainer.fit(model, train_dataloaders=dataset.train_dataloader(), val_dataloaders=dataset.val_dataloader())
+        trainer.test(ckpt_path="best", dataloaders=dataset.test_dataloader())
+    wandb.finish()
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
