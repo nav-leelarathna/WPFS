@@ -307,8 +307,9 @@ class GeneralNeuralNetwork(pl.LightningModule):
 		self.encoder_first_layers = nn.Sequential(*encoder_first_layers)
 		self.encoder_second_layers = nn.Sequential(*encoder_second_layers)
 
-		self.classification_layer = nn.Linear(args.feature_extractor_dims[-1], args.num_classes)
+		# self.classification_layer = nn.Linear(args.feature_extractor_dims[-1], args.num_classes)
 		self.decoder = decoder
+		self.save_hyperparameters()
 
 	def forward(self, x):
 		x, sparsity_weights = self.first_layer(x)			   # pass through first layer
@@ -317,13 +318,19 @@ class GeneralNeuralNetwork(pl.LightningModule):
 		x_hat = self.decoder(x) if self.decoder else None      # reconstruction
 
 		x = self.encoder_second_layers(x)
-		y_hat = self.classification_layer(x)           		   # classification, returns logits
+		# y_hat = self.classification_layer(x)           		   # classification, returns logits
+		y_hat = None
 		
 		return y_hat, x_hat, sparsity_weights
+	
+	def get_latent(self, x):
+		x, sparsity_weights = self.first_layer(x)			   # pass through first layer
+		x = self.encoder_first_layers(x)	
+		return x	
 
 	def compute_loss(self, y_true, y_hat, x, x_hat, sparsity_weights):
 		losses = {}
-		losses['cross_entropy'] = F.cross_entropy(input=y_hat, target=y_true, weight=torch.tensor(self.args.class_weights, device=self.device))
+		# losses['cross_entropy'] = F.cross_entropy(input=y_hat, target=y_true, weight=torch.tensor(self.args.class_weights, device=self.device))
 		losses['reconstruction'] = self.args.gamma * F.mse_loss(x_hat, x, reduction='mean') if self.decoder else torch.zeros(1, device=self.device)
 
 		### sparsity loss
@@ -339,7 +346,7 @@ class GeneralNeuralNetwork(pl.LightningModule):
 	def log_losses(self, losses, key, dataloader_name=""):
 		self.log(f"{key}/total_loss{dataloader_name}", losses['total'].item())
 		self.log(f"{key}/reconstruction_loss{dataloader_name}", losses['reconstruction'].item())
-		self.log(f"{key}/cross_entropy_loss{dataloader_name}", losses['cross_entropy'].item())
+		# self.log(f"{key}/cross_entropy_loss{dataloader_name}", losses['cross_entropy'].item())
 		self.log(f"{key}/sparsity_loss{dataloader_name}", losses['sparsity'].item())
 
 	def log_epoch_metrics(self, outputs, key, dataloader_name=""):

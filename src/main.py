@@ -5,6 +5,7 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.callbacks import RichProgressBar, LearningRateMonitor
 from pytorch_lightning.loggers import CSVLogger
+from pytorch_lightning.loggers import WandbLogger
 
 import lightgbm as lgb
 from sklearn.ensemble import RandomForestClassifier
@@ -38,8 +39,7 @@ def train(args):
 	print(f"Train/Valid/Test splits of sizes {args.train_size}, {args.valid_size}, {args.test_size}")
 	print(f"Num of features: {args.num_features}")
 
-	csv_logger = CSVLogger("logs", name=f"{args.experiment_name}")
-
+	# csv_logger = CSVLogger("logs", name=f"{args.experiment_name}")
 
 	#### Baselines training
 	if args.model in ['rf', 'lightgbm', 'tabnet', 'lassonet']:
@@ -145,15 +145,15 @@ def train(args):
 		valid_metrics = compute_all_metrics(args, data_module.y_valid, y_pred_valid)
 		test_metrics = compute_all_metrics(args, data_module.y_test, y_pred_test)
 
-		res = {}
-		for metrics, dataset_name in zip(
-			[train_metrics, valid_metrics, test_metrics],
-			["bestmodel_train", "bestmodel_valid", "bestmodel_test"]):
-			for metric_name, metric_value in metrics.items():
-				csv_logger.log_metrics({f"{dataset_name}/{metric_name}": metric_value})
-				res[f"{dataset_name}/{metric_name}"] = [metric_value]
+		# res = {}
+		# for metrics, dataset_name in zip(
+		# 	[train_metrics, valid_metrics, test_metrics],
+		# 	["bestmodel_train", "bestmodel_valid", "bestmodel_test"]):
+		# 	for metric_name, metric_value in metrics.items():
+		# 		csv_logger.log_metrics({f"{dataset_name}/{metric_name}": metric_value})
+		# 		res[f"{dataset_name}/{metric_name}"] = [metric_value]
 
-		pd.DataFrame(res).to_csv(f"{csv_logger.log_dir}/metrics.csv", index=False)
+		# pd.DataFrame(res).to_csv(f"{csv_logger.log_dir}/metrics.csv", index=False)
 
 	#### Pytorch lightning training
 	else:
@@ -176,20 +176,23 @@ def train(args):
 
 		##### Train
 		checkpoint_callback = ModelCheckpoint(		# save best model for evaluation
-			monitor=f'valid/cross_entropy_loss',
+			monitor=f'valid/reconstruction_loss',
 			mode='min',
-			save_last=True,
+			# save_last=True,
 			verbose=True
 		)
+		
 
 		callbacks = [checkpoint_callback, RichProgressBar()]
 		if args.patience_early_stopping and args.train_on_full_data==False:
 			callbacks.append(EarlyStopping(
-				monitor=f'valid/cross_entropy_loss',
+				monitor=f'valid/reconstruction_loss',
 				mode='min',
 				patience=args.patience_early_stopping,
 			))
 		callbacks.append(LearningRateMonitor(logging_interval='step'))
+
+		wandb_logger = WandbLogger(project="wpfs", name="test",log_model=True, save_dir="runs")
 
 		pl.seed_everything(args.seed_training, workers=True)
 		trainer = pl.Trainer(
@@ -198,7 +201,7 @@ def train(args):
 			gradient_clip_val=2.5,
 
 			# logging
-			logger=csv_logger,
+			logger=wandb_logger,
 			log_every_n_steps = 1,
 			val_check_interval = args.val_check_interval,
 			callbacks = callbacks,
@@ -209,24 +212,26 @@ def train(args):
 			detect_anomaly=True
 		)
 		# train
-		trainer.fit(model, data_module)
+		# trainer.fit(model, data_module)
+		trainer.fit(model, train_dataloaders=data_module.train_dataloader(), val_dataloaders=data_module.val_dataloader())
+		trainer.test(ckpt_path="best", dataloaders=data_module.test_dataloader())
 		
-		if args.train_on_full_data:	# if we trained on full data
-			checkpoint_path = checkpoint_callback.last_model_path
-		else:
-			checkpoint_path = checkpoint_callback.best_model_path
+		# if args.train_on_full_data:	# if we trained on full data
+		# 	checkpoint_path = checkpoint_callback.last_model_path
+		# else:
+		# 	checkpoint_path = checkpoint_callback.best_model_path
 
-			print(f"\n\nBest model saved on path {checkpoint_path}\n\n")
+		# 	print(f"\n\nBest model saved on path {checkpoint_path}\n\n")
 
 		#### Compute metrics for the best model
-		model.log_test_key = 'bestmodel_train'
-		trainer.test(model, dataloaders=data_module.train_dataloader(), ckpt_path=checkpoint_path)
+		# model.log_test_key = 'bestmodel_train'
+		# trainer.test(model, dataloaders=data_module.train_dataloader(), ckpt_path=checkpoint_path)
 
-		model.log_test_key = 'bestmodel_valid'
-		trainer.test(model, dataloaders=data_module.val_dataloader(), ckpt_path=checkpoint_path)
+		# model.log_test_key = 'bestmodel_valid'
+		# trainer.test(model, dataloaders=data_module.val_dataloader(), ckpt_path=checkpoint_path)
 
-		model.log_test_key = 'bestmodel_test'
-		trainer.test(model, dataloaders=data_module.test_dataloader(), ckpt_path=checkpoint_path)
+		# model.log_test_key = 'bestmodel_test'
+		# trainer.test(model, dataloaders=data_module.test_dataloader(), ckpt_path=checkpoint_path)
 
 
 
@@ -246,14 +251,14 @@ def parse_arguments(args=None):
 	###############		 Model			###############
 
 	parser.add_argument('--model', type=str, choices=['mlp', 'wpfs', 'rf', 'lightgbm', 'tabnet', 'fsnet', 'cae', 'dietnetworks', 'lassonet'], default='wpfs')
-	parser.add_argument('--feature_extractor_dims', type=int, nargs='+', default=[100, 100, 10],
+	parser.add_argument('--feature_extractor_dims', type=int, nargs='+', default=[128, 128, 64,128,128],
 						help='layer size for the feature extractor. If using a virtual layer,\
 							  the first dimension must match it.')
-	parser.add_argument('--layers_for_hidden_representation', type=int, default=2, 
+	parser.add_argument('--layers_for_hidden_representation', type=int, default=3, 
 						help='number of layers after which to output the hidden representation used as input to the decoder \
 							  (e.g., if the layers are [100, 100, 10] and layers_for_hidden_representation=2, \
 							  	then the hidden representation will be the representation after the two layers [100, 100])')
-	parser.add_argument('--dropout_rate', type=float, default=0.2, help='dropout rate for the main network')
+	parser.add_argument('--dropout_rate', type=float, default=0.5, help='dropout rate for the main network')
 
 
 	###############		 Sparsity network and sparsity regularization		###############
@@ -275,7 +280,7 @@ def parse_arguments(args=None):
 							  It`s applied over data preprocessed using `embedding_preprocessing`')
 	parser.add_argument('--wpn_embedding_size', type=int, default=50, help='Size of the gene embedding')
 
-	parser.add_argument('--wpn_layers', type=int, nargs='+', default=[100, 100, 100, 100], help="The list of layer sizes for the weight predictor network.")
+	parser.add_argument('--wpn_layers', type=int, nargs='+', default=[100, 100, 100, 128], help="The list of layer sizes for the weight predictor network.")
 							
 	
 	###############		LassoNet parameters				###############

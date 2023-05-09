@@ -1,0 +1,3 @@
+[submodule "lassonet"] 
+  path = lassonet 
+  url = git://https://github.com/lasso-net/lassonet.git
